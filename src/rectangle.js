@@ -6,13 +6,15 @@ export default class Rectangle {
         this.h = h
         this.speed = {x: 0, y: 0}
         this.color = 'rgb(0, 0, 200)'
-        this.collisionCount = 0
+        this.rotation = 0
+        this.rotationSpeed = 0
     }
 
     setSpeed(x, y){
         this.speed.x = x
         this.speed.y = y
     }
+
     get left() {
         return this.x
     }
@@ -27,6 +29,26 @@ export default class Rectangle {
 
     get bottom() {
         return this.y + this.h
+    }
+
+    get vertices() {
+        const centerX = this.x + this.w / 2
+        const centerY = this.y + this.h / 2
+        
+        const halfW = this.w / 2
+        const halfH = this.h / 2
+        
+        const localVertices = [
+            {x: -halfW, y: -halfH},
+            {x: halfW, y: -halfH},
+            {x: halfW, y: halfH},
+            {x: -halfW, y: halfH}
+        ]
+        
+        return localVertices.map(v => ({
+            x: centerX + v.x * Math.cos(this.rotation) - v.y * Math.sin(this.rotation),
+            y: centerY + v.x * Math.sin(this.rotation) + v.y * Math.cos(this.rotation)
+        }))
     }
 
     contains(point) {
@@ -52,8 +74,14 @@ export default class Rectangle {
         }
     }
 
-    incrementCollision() {
-        this.collisionCount++
-        return this.collisionCount >= 3
+    updateRotation() {
+        if (this.rotationSpeed !== 0) {
+            this.rotation += this.rotationSpeed
+            this.rotation = this.rotation % (2 * Math.PI)
+        }
+    }
+
+    startRotating() {
+        this.rotationSpeed = 0.03
     }
 }

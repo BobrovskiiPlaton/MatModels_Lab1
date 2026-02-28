@@ -5,7 +5,6 @@ export default class Hexagon {
         this.size = size 
         this.speed = {x: 0, y: 0}
         this.color = 'rgb(0, 200, 0)'
-        this.collisionCount = 0
     }
 
     setSpeed(x, y){
@@ -43,10 +42,5 @@ export default class Hexagon {
             top: minY,
             bottom: maxY
         }
-    }
-
-    incrementCollision() {
-        this.collisionCount++
-        return this.collisionCount >= 3
     }
 }

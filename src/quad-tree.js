@@ -1,3 +1,4 @@
+// quad-tree.js
 import Rectangle from './rectangle'
 
 export default class QuadTree {
@@ -22,27 +23,35 @@ export default class QuadTree {
             throw new TypeError('inserted object should be a Rectangle')
         }
         
-        if (!this._boundary.intersects(rect)) {
+
+        if (rect.x + rect.w < this._boundary.x || 
+            rect.x > this._boundary.x + this._boundary.w ||
+            rect.y + rect.h < this._boundary.y || 
+            rect.y > this._boundary.y + this._boundary.h) {
             return false
         }
+
         if (this._hasChildren) {
             return this._insertIntoChildren(rect)
         }
+
         this._rects.push(rect)
 
-        if (this._rects.length > this._capacity && !this._hasChildren) {
+        if (this._rects.length > this._capacity) {
             this._subdivide()
-            const rects = [...this._rects]
+            const rects = this._rects
             this._rects = []
-            rects.forEach(r => this._insertIntoChildren(r))
+            for (const r of rects) {
+                this._insertIntoChildren(r)
+            }
         }
 
         return true
     }
 
     _insertIntoChildren(rect) {
-        for (const child of this._children) {
-            if (child.insert(rect)) {
+        for (let i = 0; i < this._children.length; i++) {
+            if (this._children[i].insert(rect)) {
                 return true
             }
         }
@@ -52,35 +61,43 @@ export default class QuadTree {
     get length() {
         let count = this._rects.length
         if (this._hasChildren) {
-            // handle childrens somehow
-            for (const child of this._children) {
-                count += child.length
+            for (let i = 0; i < this._children.length; i++) {
+                count += this._children[i].length
             }
         }
         return count
     }
 
     queryRange(rect, found = []) {
-        if (!this._boundary.intersects(rect)) {
+        // Быстрая проверка пересечения
+        if (rect.x + rect.w < this._boundary.x || 
+            rect.x > this._boundary.x + this._boundary.w ||
+            rect.y + rect.h < this._boundary.y || 
+            rect.y > this._boundary.y + this._boundary.h) {
             return found
         }
 
-        for (const storedRect of this._rects) {
-            if (storedRect.intersects(rect)) {
+        // Проверяем rects в текущем узле
+        for (let i = 0; i < this._rects.length; i++) {
+            const storedRect = this._rects[i]
+            if (!(storedRect.x + storedRect.w < rect.x || 
+                  storedRect.x > rect.x + rect.w ||
+                  storedRect.y + storedRect.h < rect.y || 
+                  storedRect.y > rect.y + rect.h)) {
                 found.push(storedRect)
             }
         }
 
+        // Рекурсивно проверяем дочерние узлы
         if (this._hasChildren) {
-            for (const child of this._children) {
-                child.queryRange(rect, found)
+            for (let i = 0; i < this._children.length; i++) {
+                this._children[i].queryRange(rect, found)
             }
         }
 
         return found
     }
 
-    // todo call if the number of elements is too big
     _subdivide() {
         const x = this._boundary.x
         const y = this._boundary.y
@@ -103,20 +120,8 @@ export default class QuadTree {
     }
 
     clear() {
-        // clear _rects and _children arrays
-        // see https://stackoverflow.com/questions/1232040/how-do-i-empty-an-array-in-javascript
         this._rects = []
         this._children = []
         this._hasChildren = false
-    }
-
-    getAllRects() {
-        let rects = [...this._rects]
-        if (this._hasChildren) {
-            for (const child of this._children) {
-                rects = rects.concat(child.getAllRects())
-            }
-        }
-        return rects
     }
 }

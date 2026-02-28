@@ -5,9 +5,7 @@ export default class Circle {
         this.r = r
         this.speed = {x: 0, y: 0}
         this.color = 'rgb(255, 255, 0)'
-        this.collisionCount = 0
     }
-
 
     setSpeed(x, y) {
         this.speed.x = x
@@ -21,10 +19,5 @@ export default class Circle {
             top: this.y - this.r,
             bottom: this.y + this.r
         }
-    }
-
-    incrementCollision() {
-        this.collisionCount++
-        return this.collisionCount >= 3
     }
 }

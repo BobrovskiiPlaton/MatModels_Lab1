@@ -7,6 +7,8 @@ export default class Triangle {
         this.r = size / Math.sqrt(3)
         this.color = 'rgb(200, 0, 0)'
         this.collisionCount = 0
+        this.rotation = 0
+        this.rotationSpeed = 0
     }
 
     setSpeed(x, y){
@@ -15,12 +17,11 @@ export default class Triangle {
     }
 
     get vertices() {
-
         const angles = [Math.PI/2, 7*Math.PI/6, 11*Math.PI/6]
         const result = []
         
         for (let i = 0; i < angles.length; i++) {
-            const angle = angles[i]
+            const angle = angles[i] + this.rotation
             result.push({
                 x: this.x + this.r * Math.cos(angle),
                 y: this.y + this.r * Math.sin(angle)
@@ -53,5 +54,18 @@ export default class Triangle {
     incrementCollision() {
         this.collisionCount++
         return this.collisionCount >= 3
+    }
+
+
+    updateRotation() {
+        if (this.rotationSpeed !== 0) {
+            this.rotation += this.rotationSpeed
+            this.rotation = this.rotation % (2 * Math.PI)
+        }
+    }
+
+
+    startRotating() {
+        this.rotationSpeed = 0.05 
     }
 }
