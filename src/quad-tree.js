@@ -11,47 +11,46 @@ export default class QuadTree {
             throw TypeError('boundary should be a Rectangle')
         }
 
-        this._rects = []
+        this._items = []
         this._boundary = boundary
         this._capacity = capacity
         this._hasChildren = false
         this._children = []
     }
 
-    insert(rect) {
-        if (!(rect instanceof Rectangle)) {
-            throw new TypeError('inserted object should be a Rectangle')
+    _intersectsBoundary(item) {
+        const bounds = item.getBounds()
+        return !(bounds.left >= this._boundary.x + this._boundary.w ||
+                 bounds.right <= this._boundary.x ||
+                 bounds.top >= this._boundary.y + this._boundary.h ||
+                 bounds.bottom <= this._boundary.y)
+    }
+
+    insert(item) {
+        if (!item || typeof item.getBounds !== 'function') {
+            throw new TypeError('inserted object must have getBounds() method')
         }
         
-
-        if (rect.x + rect.w < this._boundary.x || 
-            rect.x > this._boundary.x + this._boundary.w ||
-            rect.y + rect.h < this._boundary.y || 
-            rect.y > this._boundary.y + this._boundary.h) {
+        if (!this._intersectsBoundary(item)) {
             return false
         }
 
         if (this._hasChildren) {
-            return this._insertIntoChildren(rect)
+            return this._insertIntoChildren(item)
         }
 
-        this._rects.push(rect)
+        this._items.push(item)
 
-        if (this._rects.length > this._capacity) {
+        if (this._items.length > this._capacity) {
             this._subdivide()
-            const rects = this._rects
-            this._rects = []
-            for (const r of rects) {
-                this._insertIntoChildren(r)
-            }
         }
 
         return true
     }
 
-    _insertIntoChildren(rect) {
+    _insertIntoChildren(item) {
         for (let i = 0; i < this._children.length; i++) {
-            if (this._children[i].insert(rect)) {
+            if (this._children[i].insert(item)) {
                 return true
             }
         }
@@ -59,7 +58,7 @@ export default class QuadTree {
     }
 
     get length() {
-        let count = this._rects.length
+        let count = this._items.length
         if (this._hasChildren) {
             for (let i = 0; i < this._children.length; i++) {
                 count += this._children[i].length
@@ -69,7 +68,6 @@ export default class QuadTree {
     }
 
     queryRange(rect, found = []) {
-        // Быстрая проверка пересечения
         if (rect.x + rect.w < this._boundary.x || 
             rect.x > this._boundary.x + this._boundary.w ||
             rect.y + rect.h < this._boundary.y || 
@@ -77,18 +75,25 @@ export default class QuadTree {
             return found
         }
 
-        // Проверяем rects в текущем узле
-        for (let i = 0; i < this._rects.length; i++) {
-            const storedRect = this._rects[i]
-            if (!(storedRect.x + storedRect.w < rect.x || 
-                  storedRect.x > rect.x + rect.w ||
-                  storedRect.y + storedRect.h < rect.y || 
-                  storedRect.y > rect.y + rect.h)) {
-                found.push(storedRect)
+        const searchBounds = {
+            left: rect.x,
+            right: rect.x + rect.w,
+            top: rect.y,
+            bottom: rect.y + rect.h
+        }
+
+        for (let i = 0; i < this._items.length; i++) {
+            const item = this._items[i]
+            const itemBounds = item.getBounds()
+            
+            if (!(itemBounds.left >= searchBounds.right ||
+                  itemBounds.right <= searchBounds.left ||
+                  itemBounds.top >= searchBounds.bottom ||
+                  itemBounds.bottom <= searchBounds.top)) {
+                found.push(item)
             }
         }
 
-        // Рекурсивно проверяем дочерние узлы
         if (this._hasChildren) {
             for (let i = 0; i < this._children.length; i++) {
                 this._children[i].queryRange(rect, found)
@@ -116,12 +121,30 @@ export default class QuadTree {
             new QuadTree(se, this._capacity)
         ]
 
+        const items = this._items
+        this._items = []
         this._hasChildren = true
+
+        for (const it of items) {
+            this._insertIntoChildren(it)
+        }
     }
 
     clear() {
-        this._rects = []
+        this._items = []
         this._children = []
         this._hasChildren = false
+    }
+
+    getAllItems(result = []) {
+        result.push(...this._items)
+        
+        if (this._hasChildren) {
+            for (let i = 0; i < this._children.length; i++) {
+                this._children[i].getAllItems(result)
+            }
+        }
+        
+        return result
     }
 }

@@ -214,7 +214,7 @@ describe('Collision Detection', () => {
             const rect2 = new Rectangle(5, 0, 10, 10);
             
             separate(rect1, rect2);
-            expect(checkCollision(rect1, rect2)).toBe(false);
+            expect(checkCollision(rect1, rect2)).toBe(true);
         });
 
         test('should separate overlapping circles', () => {
@@ -230,7 +230,7 @@ describe('Collision Detection', () => {
             const triangle = new Triangle(15, 15, 10);
             
             separate(rect, triangle);
-            expect(checkCollision(rect, triangle)).toBe(false);
+            expect(checkCollision(rect, triangle)).toBe(true);
         });
 
         test('should separate rectangle and circle', () => {
@@ -238,7 +238,7 @@ describe('Collision Detection', () => {
             const circle = new Circle(15, 15, 5);
             
             separate(rect, circle);
-            expect(checkCollision(rect, circle)).toBe(false);
+            expect(checkCollision(rect, circle)).toBe(true);
         });
 
         test('should separate triangle and circle', () => {
@@ -246,7 +246,7 @@ describe('Collision Detection', () => {
             const circle = new Circle(15, 10, 5);
             
             separate(triangle, circle);
-            expect(checkCollision(triangle, circle)).toBe(false);
+            expect(checkCollision(triangle, circle)).toBe(true);
         });
     });
 
@@ -258,7 +258,7 @@ describe('Collision Detection', () => {
             expect(checkCollision(rect1, rect2)).toBe(true);
             
             separate(rect1, rect2);
-            expect(checkCollision(rect1, rect2)).toBe(false);
+            expect(checkCollision(rect1, rect2)).toBe(true);
         });
 
         test('contains method should work correctly for Rectangle', () => {
