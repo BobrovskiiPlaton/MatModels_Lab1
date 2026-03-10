@@ -19,7 +19,6 @@ const gameState = {
     stopCycle: null,
     quadTree: null,
     figuresChanged: true, // Флаг для обновления allFigures
-    processedPairs: new Set(), // Переиспользуемый Set для пар
     searchRectPool: [], // Пул для прямоугольников поиска
     canvasWidth: 0,
     canvasHeight: 0
@@ -56,7 +55,6 @@ function draw(tFrame) {
     const context = canvas.getContext('2d');
     context.clearRect(0, 0, gameState.canvasWidth, gameState.canvasHeight);
     
-    // Оптимизированная отрисовка
     drawRectangles(context);
     drawTriangles(context);
     drawHexagons(context);
@@ -125,8 +123,8 @@ function drawCircles(context) {
     }
 }
 
-// Оптимизированная проверка коллизий
-function checkAABBCollision(bounds1, bounds2, figure1, figure2) {
+function checkCollision(figure1, figure2, bounds1, bounds2) {
+    // AABB проверка
     if (bounds2.left >= bounds1.right ||
         bounds2.right <= bounds1.left ||
         bounds2.top >= bounds1.bottom ||
@@ -134,7 +132,7 @@ function checkAABBCollision(bounds1, bounds2, figure1, figure2) {
         return false;
     }
     
-    // Для кругов используем точную проверку с квадратом расстояния
+    // Специфическая проверка для пары круг-круг
     if (figure1 instanceof Circle && figure2 instanceof Circle) {
         const dx = figure1.x - figure2.x;
         const dy = figure1.y - figure2.y;
@@ -146,9 +144,7 @@ function checkAABBCollision(bounds1, bounds2, figure1, figure2) {
     return true;
 }
 
-// Оптимизированная обработка коллизий
 function handleCollisions() {
-    // Обновляем allFigures только при необходимости
     if (gameState.figuresChanged) {
         gameState.allFigures = [
             ...gameState.rects,
@@ -162,25 +158,23 @@ function handleCollisions() {
     const allFigures = gameState.allFigures;
     const boundary = new Rectangle(0, 0, gameState.canvasWidth, gameState.canvasHeight);
     
-    // Переиспользуем QuadTree
     if (!gameState.quadTree) {
         gameState.quadTree = new QuadTree(boundary, 8);
     } else {
         gameState.quadTree.clear();
     }
     
+    // Вставка всех фигур в квадродерево
     for (let i = 0; i < allFigures.length; i++) {
         gameState.quadTree.insert(allFigures[i]);
     }
 
-    const processedPairs = gameState.processedPairs;
-    processedPairs.clear();
-    
+    // Оптимизированный цикл проверки коллизий
     for (let i = 0; i < allFigures.length; i++) {
         const figure1 = allFigures[i];
         const bounds1 = figure1.getBounds();
         
-        // Используем пул для поискового прямоугольника
+        // Создаем область поиска вокруг фигуры
         const searchRect = getSearchRect(
             bounds1.left - 50,
             bounds1.top - 50,
@@ -188,26 +182,24 @@ function handleCollisions() {
             bounds1.bottom - bounds1.top + 100
         );
         
+        // Получаем ближайшие фигуры из квадродерева
         const nearbyFigures = gameState.quadTree.queryRange(searchRect);
         releaseSearchRect(searchRect);
         
-        for (let j = 0; j < nearbyFigures.length; j++) {
+        // Проверяем коллизии только с фигурами, у которых индекс больше i
+        for (let j = i + 1; j < nearbyFigures.length - 1; j++) {
             const figure2 = nearbyFigures[j];
-            if (figure1 === figure2) continue;
             
-            // Оптимизированное создание ключа пары
+            // Находим индекс figure2 в allFigures
             const index2 = allFigures.indexOf(figure2);
-            const pairId = i < index2 ? 
-                (i << 16) | index2 : // Используем битовые операции для чисел
-                (index2 << 16) | i;
             
-            if (processedPairs.has(pairId)) continue;
+            // Пропускаем, если это та же фигура или если индекс2 <= i
+            if (figure1 === figure2 || index2 <= i) continue;
             
             const bounds2 = figure2.getBounds();
             
-            if (checkAABBCollision(bounds1, bounds2, figure1, figure2)) {
-                processedPairs.add(pairId);
-                
+            if (checkCollision(figure1, figure2, bounds1, bounds2)) {
+                // Запускаем вращение для соответствующих фигур
                 if (figure1 instanceof Triangle || figure1 instanceof Rectangle) {
                     figure1.startRotating();
                 }
@@ -215,9 +207,10 @@ function handleCollisions() {
                     figure2.startRotating();
                 }
                 
+                // Разделяем фигуры
                 separateFigures(figure1, figure2, bounds1, bounds2);
                 
-                // Обмен скоростями
+                // Меняем скорости
                 const speed1x = figure1.speed.x;
                 const speed1y = figure1.speed.y;
                 figure1.setSpeed(figure2.speed.x, figure2.speed.y);
@@ -227,7 +220,6 @@ function handleCollisions() {
     }
 }
 
-// Оптимизированное разделение фигур
 function separateFigures(figure1, figure2, bounds1, bounds2) {
     const overlapX = Math.min(bounds1.right, bounds2.right) - Math.max(bounds1.left, bounds2.left);
     const overlapY = Math.min(bounds1.bottom, bounds2.bottom) - Math.max(bounds1.top, bounds2.top);
@@ -250,16 +242,13 @@ function separateFigures(figure1, figure2, bounds1, bounds2) {
         }
     }
     
-    // Помечаем, что границы изменились
     if (figure1._needsBoundsUpdate !== undefined) figure1._needsBoundsUpdate = true;
     if (figure2._needsBoundsUpdate !== undefined) figure2._needsBoundsUpdate = true;
     
-    // Оптимизированная проверка границ канваса
     constrainToCanvas(figure1);
     constrainToCanvas(figure2);
 }
 
-// Оптимизированное ограничение фигур канвасом
 function constrainToCanvas(figure) {
     const canvasWidth = gameState.canvasWidth;
     const canvasHeight = gameState.canvasHeight;
@@ -514,7 +503,7 @@ function setup() {
         const rectangle = new Rectangle(
             Math.random() * (gameState.canvasWidth - 20), 
             Math.random() * (gameState.canvasHeight - 20), 
-            10, 10
+            5, 5
         );
         rectangle.setSpeed(speedX, speedY);
         gameState.rects.push(rectangle);
@@ -522,7 +511,7 @@ function setup() {
         const triangle = new Triangle(
             Math.random() * (gameState.canvasWidth - 20), 
             Math.random() * (gameState.canvasHeight - 20), 
-            10
+            5
         );
         triangle.setSpeed(speedX * 1.1, speedY * 1.1); // Немного разные скорости
         gameState.triangles.push(triangle);
@@ -540,7 +529,7 @@ function setup() {
         const circle = new Circle(
             Math.random() * (gameState.canvasWidth - 20), 
             Math.random() * (gameState.canvasHeight - 20), 
-            5
+            3
         );
         circle.setSpeed(speedX, speedY);
         gameState.circles.push(circle);
