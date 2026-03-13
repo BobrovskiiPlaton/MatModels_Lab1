@@ -169,48 +169,47 @@ function handleCollisions() {
         gameState.quadTree.insert(allFigures[i]);
     }
 
+
+    const processedPairs = new Set();
+
+
     // Оптимизированный цикл проверки коллизий
     for (let i = 0; i < allFigures.length; i++) {
         const figure1 = allFigures[i];
         const bounds1 = figure1.getBounds();
-        
-        // Создаем область поиска вокруг фигуры
         const searchRect = getSearchRect(
-            bounds1.left - 50,
-            bounds1.top - 50,
-            bounds1.right - bounds1.left + 100,
-            bounds1.bottom - bounds1.top + 100
+            bounds1.left - 2,
+            bounds1.top - 2,
+            (bounds1.right - bounds1.left) + 5,
+            (bounds1.bottom - bounds1.top) + 5
         );
-        
-        // Получаем ближайшие фигуры из квадродерева
-        const nearbyFigures = gameState.quadTree.queryRange(searchRect);
+
+        const candidates = gameState.quadTree.queryRange(searchRect);
         releaseSearchRect(searchRect);
-        
-        // Проверяем коллизии только с фигурами, у которых индекс больше i
-        for (let j = i + 1; j < nearbyFigures.length - 1; j++) {
-            const figure2 = nearbyFigures[j];
-            
-            // Находим индекс figure2 в allFigures
-            const index2 = allFigures.indexOf(figure2);
-            
-            // Пропускаем, если это та же фигура или если индекс2 <= i
-            if (figure1 === figure2 || index2 <= i) continue;
-            
+
+        for (let k = 0; k < candidates.length; k++) {
+            const figure2 = candidates[k];
+            if (figure1 === figure2) continue;
+
+            const id1 = allFigures.indexOf(figure1);
+            const id2 = allFigures.indexOf(figure2);
+
+            const pairKey = id1 < id2 ? `${id1}-${id2}` : `${id2}-${id1}`;
+
+            if (processedPairs.has(pairKey)) continue;
+            processedPairs.add(pairKey);
+
             const bounds2 = figure2.getBounds();
-            
-            if (checkCollision(figure1, figure2, bounds1, bounds2)) {
-                // Запускаем вращение для соответствующих фигур
+            if(checkCollision(figure1, figure2, bounds1, bounds2)) {
                 if (figure1 instanceof Triangle || figure1 instanceof Rectangle) {
                     figure1.startRotating();
                 }
                 if (figure2 instanceof Triangle || figure2 instanceof Rectangle) {
                     figure2.startRotating();
                 }
-                
-                // Разделяем фигуры
+
                 separateFigures(figure1, figure2, bounds1, bounds2);
-                
-                // Меняем скорости
+
                 const speed1x = figure1.speed.x;
                 const speed1y = figure1.speed.y;
                 figure1.setSpeed(figure2.speed.x, figure2.speed.y);
@@ -493,8 +492,8 @@ function setup() {
     gameState.circles = [];
     
     // Оптимизированное создание фигур
-    const count = 800;
-    const speedRange = 4;
+    const count = 2000;
+    const speedRange = 0.5;
     
     for (let i = 0; i < count; i++) {
         const speedX = (Math.random() * speedRange + 1) * (Math.random() > 0.5 ? 1 : -1);
@@ -516,15 +515,14 @@ function setup() {
         triangle.setSpeed(speedX * 1.1, speedY * 1.1); // Немного разные скорости
         gameState.triangles.push(triangle);
 
-        /* Раскомментировать для добавления шестиугольников
-        const hexagon = new Hexagon(
+        /*const hexagon = new Hexagon(
             Math.random() * (gameState.canvasWidth - 20), 
             Math.random() * (gameState.canvasHeight - 20), 
-            10
+            3
         );
         hexagon.setSpeed(speedX * 0.9, speedY * 0.9);
-        gameState.hexagons.push(hexagon);
-        */
+        gameState.hexagons.push(hexagon);*/
+        
 
         const circle = new Circle(
             Math.random() * (gameState.canvasWidth - 20), 
